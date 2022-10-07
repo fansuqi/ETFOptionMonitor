@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title> IMPLIED VOL {{ underlying }} </title>
+    <script src="../static/js/jquery-3.4.1.min.js"></script>
+    <script src="../static/js/highstock/highstock.js"></script>
+    <script src="../static/js/highstock/gray.js"></script>
+    <script src="../static/js/bootstrap/bootstrap.bundle.js"></script>
+    <script src="../static/js/chart.js"></script>
+
+    <link href="../static/css/bootstrap/bootstrap.css" rel="stylesheet">
+    <link href="../static/css/divider.css" rel="stylesheet">
+
+    <script type="text/javascript">
+        let options = {
+            chart: {
+                zoomType: "xy",
+                animation: false
+            },
+            title: {
+                text: ""
+            },
+            plotOptions: {
+                series: {
+                    animation: false,
+                    dataGrouping: {
+                        enabled: false,
+                        groupPixelWidth: 5
+                    }
+                },
+                column: {
+                    pointWidth: 1
+                }
+            },
+            xAxis: {
+                plotLines: []
+            },
+            tooltip:{
+                crosshairs: true,
+                shared: true
+            },
+            yAxis: [{
+                opposite: false,
+                resize: {
+                    enabled: true
+                }
+            }, {
+                resize: {
+                    enabled: true
+                }
+            }, {}],
+            series: [{
+                yAxis: 0
+            }, {
+                yAxis: 1
+            }, {
+                yAxis: 2,
+                visible: false
+            }, {
+                yAxis: 0
+            }, {
+                yAxis: 0
+            }],
+            scrollbar: {
+                enabled: false
+            },
+            rangeSelector: {
+                enabled: false
+            },
+            navigator: {
+                enabled: false
+            },
+            credits: {
+                enabled: false
+            }
+        };
+    </script>
+
+    <script type="text/javascript">
+        let timer; // 定时器
+        let timerInterval = 1000; // 刷新间隔
+        let chart = new Chart(options);
+        let underlying = "{{ underlying }}"
+        let month = "{{ month }}"
+        let strike = "{{ strike }}"
+        let lastTradingDay = "{{ lastTradingDay }}"
+        let callSymbol = "{{ callSymbol }}"
+        let putSymbol = "{{ putSymbol }}"
+    </script>
+
+    <script type="text/javascript">
+        function updateDiv(data) {
+            {#chg = data["underlying"]["last"] / underlyingYesterday - 1;#}
+            {#color = chg > 0 ? "text-danger" : "text-success";#}
+            $("#underlyingPrice").text(data["underlying"]);
+            {#$("#underlyingPriceChg").text((chg * 100).toFixed(2) + "%");#}
+            {#$("#underlyingPrice").removeClass("text-danger").removeClass("text-success").addClass(color);#}
+            {#$("#underlyingPriceChg").removeClass("text-danger").removeClass("text-success").addClass(color);#}
+
+            {#chg = data["option"]["premium"] - premiumYesterday;#}
+            {#color = chg > 0 ? "text-danger" : "text-success";#}
+            $("#basis").text(data["basis"].toFixed(0));
+            {#$("#premiumChg").text(chg.toFixed(4));#}
+            {#$("#premium").removeClass("text-danger").removeClass("text-success").addClass(color);#}
+            {#$("#premiumChg").removeClass("text-danger").removeClass("text-success").addClass(color);#}
+
+            {#chg = data["option"]["iv"] - ivYesterday;#}
+            {#color = chg > 0 ? "text-danger" : "text-success";#}
+            $("#iv").text(data["vol"].toFixed(2) + "%");
+            {#$("#ivChg").text(chg.toFixed(2));#}
+            {#$("#iv").removeClass("text-danger").removeClass("text-success").addClass(color);#}
+            {#$("#ivChg").removeClass("text-danger").removeClass("text-success").addClass(color);#}
+
+            $("#rv").text(data["rv"]["rv"].toFixed(2) + "%");
+            $("#rvEst").text(data["rv"]["rvEst"].toFixed(2) + "%");
+
+            $("#call").removeClass("text-primary").removeClass("text-white").addClass(data["call"]["bid1"] === data["call"]["ask1"] ? "text-primary" : "text-white");
+            $("#put").removeClass("text-primary").removeClass("text-white").addClass(data["put"]["bid1"] === data["put"]["ask1"] ? "text-primary" : "text-white");
+
+            $("#callLastPrice").text(data["call"]["last"]);
+            $("#callIV").text(data["call"]["iv"].toFixed(2) + "%");
+            $("#callAsk1Price").text(data["call"]["ask1"]);
+            $("#callAsk1IV").text(data["call"]["askIV1"].toFixed(2) + "%");
+            $("#callAsk1Volume").text(data["call"]["askVolume1"]);
+            $("#callBid1Price").text(data["call"]["bid1"]);
+            $("#callBid1IV").text(data["call"]["bidIV1"].toFixed(2) + "%");
+            $("#callBid1Volume").text(data["call"]["bidVolume1"]);
+
+            $("#putLastPrice").text(data["put"]["last"]);
+            $("#putIV").text(data["put"]["iv"].toFixed(2) + "%");
+            $("#putAsk1Price").text(data["put"]["ask1"]);
+            $("#putAsk1IV").text(data["put"]["askIV1"].toFixed(2) + "%");
+            $("#putAsk1Volume").text(data["put"]["askVolume1"]);
+            $("#putBid1Price").text(data["put"]["bid1"]);
+            $("#putBid1IV").text(data["put"]["bidIV1"].toFixed(2) + "%");
+            $("#putBid1Volume").text(data["put"]["bidVolume1"]);
+
+            $("#delta").text(data["greeks"]["delta"].toFixed(2));
+            $("#vega").text(data["greeks"]["vega"].toFixed(2));
+            $("#gamma").text(data["greeks"]["gamma"].toFixed(2));
+            $("#theta").text(data["greeks"]["theta"].toFixed(2));
+
+            // $("#rv5").text(data["underlying"]["RV5"].toFixed(2));
+            // $("#rv10").text(data["underlying"]["RV10"].toFixed(2));
+            // $("#rv20").text(data["underlying"]["RV20"].toFixed(2));
+            // $("#rv30").text(data["underlying"]["RV30"].toFixed(2));
+        }
+    </script>
+
+    <script type="text/javascript">
+        function refresh() {
+            $.getJSON("/data/snapshot/iv", {"callSymbol": callSymbol, "putSymbol": putSymbol}, function(data) {
+                if (data["status"] !== true){
+                    return;
+                }
+                chart.update(data["time"], [data["vol"], data["synthetic"], data["basis"]]);
+                updateDiv(data);
+            })
+        }
+
+        $(document).ready(function(){
+            timer = setInterval(refresh, timerInterval);
+            $.getJSON("/data/ts/iv", {"offset": chart.getOffset(), "callSymbol": callSymbol, "putSymbol": putSymbol}, function(data) {
+                {#options.series[2].visible = false;#}
+                chart.init(data.index, data.data, data.columns);
+            })
+        })
+    </script>
+</head>
+
+<body>
+    <div class="container-fluid d-flex min-vh-100">
+    	<div class="row flex-fill fill d-flex justify-content-lg-start bg-dark text-white">
+	        <div class="col-lg-9" id="chart"></div>
+            <div class="col-lg-3" id="info">
+                <div class="row">
+                    <div class="col-lg-4 text-warning"> <h3 id="underlyingSymbol"> {{ underlying }} </h3> </div>
+                    <div class="col-lg-4 text-warning"> <h3 id="lastTradingDay"> {{ lastTradingDay }} </h3> </div>
+                    <div class="col-lg-4 text-warning"> <h3 id="strike"> {{ strike }} </h3> </div>
+                </div>
+                <div class="row">
+                    <div class="col-lg-4"> <h3> UNDER. </h3> </div>
+                    <div class="col-lg-4"> <h3 id="underlyingPrice"> </h3> </div>
+                    <div class="col-lg-4"> <h3 id="underlyingPriceChg"> </h3> </div>
+                </div>
+                <div class="row">
+                    <div class="col-lg-4"> <h3> BASIS </h3> </div>
+                    <div class="col-lg-4"> <h3 id="basis"> </h3> </div>
+                    <div class="col-lg-4"> <h3 id="basisChg"> </h3> </div>
+                </div>
+                <div class="row">
+                    <div class="col-lg-4"> <h3> IV </h3> </div>
+                    <div class="col-lg-4"> <h3 id="iv"> </h3> </div>
+                    <div class="col-lg-4"> <h3 id="ivChg"> </h3> </div>
+                </div>
+
+                <div class="h-divider"></div>
+                <!--rv-->
+                <div class="row">
+                    <div class="col-lg-3"> <h4> RV </h4> </div>
+                    <div class="col-lg-3"> <h4 id="rv"> -- </h4> </div>
+                    <div class="col-lg-3"> <h4> Est.RV </h4> </div>
+                    <div class="col-lg-3"> <h4 id="rvEst"> -- </h4> </div>
+                </div>
+{#                <div class="row">#}
+{#                    <div class="col-lg-3"> <h6> RV5 </h6> </div>#}
+{#                    <div class="col-lg-3" id="rv5"> <h6> -- </h6> </div>#}
+{#                    <div class="col-lg-3"> <h6> RV10 </h6> </div>#}
+{#                    <div class="col-lg-3" id="rv10"> <h6> -- </h6> </div>#}
+{#                </div>#}
+
+                <div class="h-divider"></div>
+                <!--call-->
+                <div class="row">
+                    <div class="col-lg-3"> <h4 id="call"> CALL </h4> </div>
+                    <div class="col-lg-3"> <h4 id="callLastPrice"> -- </h4> </div>
+                    <div class="col-lg-3"> <h4 id="callIV"> -- </h4> </div>
+                </div>
+                <div class="row">
+                    <div class="col-lg-3"> ASK1 </div>
+                    <div class="col-lg-3" id="callAsk1Price"> </div>
+                    <div class="col-lg-3" id="callAsk1IV"> </div>
+                    <div class="col-lg-3" id="callAsk1Volume"> </div>
+                </div>
+                <div class="row">
+                    <div class="col-lg-3"> BID1 </div>
+                    <div class="col-lg-3" id="callBid1Price"> -- </div>
+                    <div class="col-lg-3" id="callBid1IV"> -- </div>
+                    <div class="col-lg-3" id="callBid1Volume"> -- </div>
+                </div>
+
+                <div class="h-divider"></div>
+                <!--put-->
+                <div class="row">
+                    <div class="col-lg-3"> <h4 id="put"> PUT </h4> </div>
+                    <div class="col-lg-3"> <h4 id="putLastPrice"> -- </h4> </div>
+                    <div class="col-lg-3"> <h4 id="putIV"> -- </h4> </div>
+                </div>
+                <div class="row">
+                    <div class="col-lg-3"> ASK1 </div>
+                    <div class="col-lg-3" id="putAsk1Price"> -- </div>
+                    <div class="col-lg-3" id="putAsk1IV"> -- </div>
+                    <div class="col-lg-3" id="putAsk1Volume"> -- </div>
+                </div>
+                <div class="row">
+                    <div class="col-lg-3"> BID1 </div>
+                    <div class="col-lg-3" id="putBid1Price"> -- </div>
+                    <div class="col-lg-3" id="putBid1IV"> -- </div>
+                    <div class="col-lg-3" id="putBid1Volume"> -- </div>
+                </div>
+
+                <div class="h-divider"></div>
+                <!--greeks-->
+                <div class="row">
+                    <div class="col-lg-3"> <h6> DELTA </h6> </div>
+                    <div class="col-lg-3"> <h6 id="delta"> -- </h6> </div>
+                    <div class="col-lg-3"> <h6> VEGA </h6> </div>
+                    <div class="col-lg-3"> <h6 id="vega"> -- </h6> </div>
+                </div>
+                <div class="row">
+                    <div class="col-lg-3"> <h6> GAMMA </h6> </div>
+                    <div class="col-lg-3"> <h6 id="gamma"> -- </h6> </div>
+                    <div class="col-lg-3"> <h6> THETA </h6> </div>
+                    <div class="col-lg-3"> <h6 id="theta"> -- </h6> </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+
+<script type="text/javascript">
+    function chgStrike(next_strike) {
+        $.getJSON("/data/option_info/get_next_strike", {"underlying": underlying, "month": month, "strike": strike, "next": next_strike}, function (data) {
+            chart = new Chart(options);
+            month = data["month"];
+            strike = data["strike"];
+            lastTradingDay = data["lastTradingDay"];
+            callSymbol = data["callSymbol"];
+            putSymbol = data["putSymbol"];
+            $("#lastTradingDay").text(lastTradingDay);
+            $("#strike").text(strike);
+
+            $.getJSON("/data/ts/iv", {"offset": chart.getOffset(), "callSymbol": callSymbol, "putSymbol": putSymbol}, function(data) {
+                chart.init(data.index, data.data, data.columns);
+            })
+        })
+    }
+
+    function chgMonth(next_month) {
+        $.getJSON("/data/option_info/get_next_month", {"underlying": underlying, "month": month, "strike": strike, "next": next_month}, function (data) {
+            chart = new Chart(options);
+            month = data["month"];
+            strike = data["strike"];
+            lastTradingDay = data["lastTradingDay"];
+            callSymbol = data["callSymbol"];
+            putSymbol = data["putSymbol"];
+            $("#lastTradingDay").text(lastTradingDay);
+            $("#strike").text(strike);
+
+            $.getJSON("/data/ts/iv", {"offset": chart.getOffset(), "callSymbol": callSymbol, "putSymbol": putSymbol}, function(data) {
+                chart.init(data.index, data.data, data.columns);
+            })
+        })
+    }
+</script>
+
+<script type="text/javascript">  // 处理键盘事件
+    $(document).keyup(function(event) {
+
+        if (event.ctrlKey && event.keyCode === 13) {  // Ctrl + Enter
+            $("#mdlOptInfo").modal("show");
+        }
+
+        if (event.which === 39){  // Right
+            chgMonth(1);
+
+        } else if (event.which === 37){ // Left
+            chgMonth(-1);
+
+        } else if (event.which === 33){ // Page Up
+            chgStrike(-1)
+
+        } else if (event.which === 34){ // Page Down
+            chgStrike(1)
+        }
+
+        else if (event.which === 40){ // Down
+            $.getJSON("/data/ts/iv", {"offset": chart.getOffset(), "callSymbol": callSymbol, "putSymbol": putSymbol}, function(data) {
+               chart.append(data.index, data.data);
+            })
+        }
+
+        else if (event.which === 38){ //up
+            chart.pop();
+        }
+
+        else if (event.which === 66) { // B
+            chart.chart.options.series[2].visible = !chart.chart.options.series[2].visible;
+            chart.refresh();
+        }
+
+        else if (event.which === 82) { // B
+            chart.chart.options.series[3].visible = !chart.chart.options.series[3].visible;
+            chart.chart.options.series[4].visible = !chart.chart.options.series[4].visible;
+            chart.refresh();
+        }
+    })
+</script>
+</html>

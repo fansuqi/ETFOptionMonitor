@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title> Skew Trading </title>
+    <script src="../static/js/jquery-3.4.1.min.js"></script>
+    <script src="../static/js/highstock/highstock.js"></script>
+    <script src="../static/js/highstock/gray.js"></script>
+    <script src="../static/js/bootstrap/bootstrap.bundle.js"></script>
+    <script src="../static/js/chart.js"></script>
+
+    <link href="../static/css/bootstrap/bootstrap.css" rel="stylesheet">
+    <link href="../static/css/divider.css" rel="stylesheet">
+
+    <script>
+        let options = {
+            chart: {
+                zoomType: "x",
+                animation: false
+            },
+            title: {
+                text: ""
+            },
+            plotOptions: {
+                series: {
+                    animation: false,
+                    dataGrouping: {
+                        enabled: true,
+                        groupPixelWidth: 5
+                    }
+                },
+                column: {
+                    pointWidth: 1
+                }
+            },
+            xAxis: {
+                plotLines: []
+            },
+            tooltip:{
+                shared: true
+            },
+            yAxis: [{
+                opposite: false,
+            },{
+                opposite: true,
+            }],
+            series: [{
+                yAxis: 0
+            }, {
+                yAxis: 1
+            }],
+            scrollbar: {
+                enabled: false
+            },
+            rangeSelector: {
+                enabled: false
+            },
+            navigator: {
+                enabled: false
+            },
+            credits: {
+                enabled: false
+            }
+        };
+    </script>
+
+    <script type="text/javascript">
+        let timer; // 定时器
+        let timerInterval = 500; // 刷新间隔
+        let chart = new Chart(options);
+        let buySymbol = "{{ buySymbol }}"
+        let sellSymbol = "{{ sellSymbol }}"
+        let underlying = "{{ underlying }}"
+    </script>
+
+    <script type="text/javascript">
+        function updateDiv(data) {
+            $("#volDiff").text(data["vol_diff"] + "%");
+            $("#synthetic").text(data["synthetic"]);
+
+            $("#buyAsk1Price").text(data["buy"]["ask1"]);
+            $("#buyAsk1IV").text(data["buy"]["askIV1"]);
+            $("#buyAsk1Volume").text(data["buy"]["askVolume1"]);
+
+            $("#buyBid1Price").text(data["buy"]["bid1"]);
+            $("#buyBid1IV").text(data["buy"]["bidIV1"]);
+            $("#buyBid1Volume").text(data["buy"]["bidVolume1"]);
+
+            $("#buyDelta").text(data["buy"]["delta"]);
+            $("#buyGamma").text(data["buy"]["gamma"]);
+            $("#buyTheta").text(data["buy"]["theta"]);
+            $("#buyVega").text(data["buy"]["vega"]);
+
+            $("#sellAsk1Price").text(data["sell"]["ask1"]);
+            $("#sellAsk1IV").text(data["sell"]["askIV1"]);
+            $("#sellAsk1Volume").text(data["sell"]["askVolume1"]);
+
+            $("#sellBid1Price").text(data["sell"]["bid1"]);
+            $("#sellBid1IV").text(data["sell"]["bidIV1"]);
+            $("#sellBid1Volume").text(data["sell"]["bidVolume1"]);
+
+            $("#sellDelta").text(data["sell"]["delta"]);
+            $("#sellGamma").text(data["sell"]["gamma"]);
+            $("#sellTheta").text(data["sell"]["theta"]);
+            $("#sellVega").text(data["sell"]["vega"]);
+        }
+    </script>
+
+    <script type="text/javascript">
+        function refresh() {
+            $.getJSON("/data/snapshot/skew", {"buySymbol": buySymbol, "sellSymbol": sellSymbol}, function(data) {
+                if (data["status"] !== true){
+                    return;
+                }
+                chart.update(data["time"], [data["vol_diff"], data["synthetic"]]);
+                updateDiv(data);
+            })
+        }
+
+        $(document).ready(function(){
+            timer = setInterval(refresh, timerInterval);
+            $.getJSON("data/ts/skew", {"offset": chart.getOffset(), "buySymbol": buySymbol, "sellSymbol": sellSymbol}, function(data) {
+                chart.init(data.index, data.data, data.columns);
+            })
+        })
+    </script>
+</head>
+
+<body>
+    <div class="container-fluid d-flex min-vh-100">
+        <div class="row flex-fill fill d-flex justify-content-lg-start bg-dark text-white">
+            <div class="col-9" id="chart"></div>
+
+            <div class="col-3" id="info">
+                <div class="row">
+                    <div class="col-6 text-warning"> <h3 id="underlyingSymbol"> {{ underlying }} </h3> </div>
+                    <div class="col-6 text-warning"> <h3 id="lastTradingDay"> {{ lastTradingDay }} </h3> </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-6 text-warning"> <h3> VOL DIFF </h3> </div>
+                    <div class="col-6 text-warning"> <h3 id="volDiff"> - </h3> </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-6 text-warning"> <h3> SYN </h3> </div>
+                    <div class="col-6 text-warning"> <h3 id="synthetic"> - </h3> </div>
+                </div>
+
+                <!--buy-->
+                <div class="h-divider"></div>
+                <div class="row">
+                    <div class="col-6"> <h4 id="buySymbol"> {{ buySymbol }} </h4> </div>
+                    <div class="col-3"> <h4 id="buyStrike"> {{ buyStrike }} </h4> </div>
+                    <div class="col-3"> <h4 id="buyType"> {{ buyType }} </h4> </div>
+                </div>
+                <div class="row">
+                    <div class="col-3"> ASK1 </div>
+                    <div class="col-3" id="buyAsk1Price"> -- </div>
+                    <div class="col-3" id="buyAsk1IV"> -- </div>
+                    <div class="col-3" id="buyAsk1Volume"> -- </div>
+                </div>
+                <div class="row">
+                    <div class="col-3"> BID1 </div>
+                    <div class="col-3" id="buyBid1Price"> -- </div>
+                    <div class="col-3" id="buyBid1IV"> -- </div>
+                    <div class="col-3" id="buyBid1Volume"> -- </div>
+                </div>
+
+                 <!--buy greeks-->
+                <div class="h-divider"></div>
+                <div class="row">
+                    <div class="col-3"> <h6> DELTA </h6> </div>
+                    <div class="col-3"> <h6 id="buyDelta"> -- </h6> </div>
+                    <div class="col-3"> <h6> VEGA </h6> </div>
+                    <div class="col-3"> <h6 id="buyVega"> -- </h6> </div>
+                </div>
+                <div class="row">
+                    <div class="col-3"> <h6> GAMMA </h6> </div>
+                    <div class="col-3"> <h6 id="buyGamma"> -- </h6> </div>
+                    <div class="col-3"> <h6> THETA </h6> </div>
+                    <div class="col-3"> <h6 id="buyTheta"> -- </h6> </div>
+                </div>
+
+                <!--sell-->
+                <div class="h-divider"></div>
+                <div class="row">
+                    <div class="col-6"> <h4 id="sellSymbol"> {{ sellSymbol }} </h4> </div>
+                    <div class="col-3"> <h4 id="sellStrike"> {{ sellStrike }} </h4> </div>
+                    <div class="col-3"> <h4 id="sellType"> {{ sellType }} </h4> </div>
+                </div>
+                <div class="row">
+                    <div class="col-3"> ASK1 </div>
+                    <div class="col-3"> <h6 id="sellAsk1Price"> -- </h6> </div>
+                    <div class="col-3"> <h6 id="sellAsk1IV"> -- </h6> </div>
+                    <div class="col-3"> <h6 id="sellAsk1Volume"> -- </h6> </div>
+                </div>
+                <div class="row">
+                    <div class="col-3"> BID1 </div>
+                    <div class="col-3" id="sellBid1Price"> -- </div>
+                    <div class="col-3" id="sellBid1IV"> -- </div>
+                    <div class="col-3" id="sellBid1Volume"> -- </div>
+                </div>
+
+                 <!--sell greeks-->
+                <div class="h-divider"></div>
+                <div class="row">
+                    <div class="col-3"> <h6> DELTA </h6> </div>
+                    <div class="col-3" id="sellDelta"> <h6 id="sellDelta"> -- </h6> </div>
+                    <div class="col-3"> <h6> VEGA </h6> </div>
+                    <div class="col-3" id="sellVega"> <h6 id="sellVega"> -- </h6> </div>
+                </div>
+                <div class="row">
+                    <div class="col-3"> <h6> GAMMA </h6> </div>
+                    <div class="col-3"> <h6 id="sellGamma"> -- </h6> </div>
+                    <div class="col-3"> <h6> THETA </h6> </div>
+                    <div class="col-3"> <h6 id="sellTheta"> -- </h6> </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade"  id="mdlSkewInfo" aria-labelledby="myModallabel" aria-hidden="true" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="myModallabel"> SKEW INFO </h5>
+                    <button class="close" type="button" data-dismiss="modal" aria-hidden="true">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="formSkewInfo" class="form-horizontal">
+                        <div class="form-group row">
+                            <div class="col-3"> UNDERLYING </div>
+                            <select class="form-control col-6" id="sltUnderlying" name="underlying" onchange="changeUnderlying()">
+                                <option> 510050 </option>
+                                <option> 510300 </option>
+                                <option> 159919 </option>
+                            </select>
+                        </div>
+
+                        <div class="form-group row">
+                            <div class="col-3"> MATURITY </div>
+                            <select class="form-control col-6" id="sltLastTradingDay" name="lastTradingDay" onchange="changeLastTrdingDay()">
+                                <option> 2021-03-27 </option>
+                                <option> 2021-03-27 </option>
+                                <option> 2021-03-27 </option>
+                            </select>
+                        </div>
+
+                        <div class="form-group row">
+                            <div class="col-3"> BUY LEG </div>
+                            <select class="form-control col-3" id="sltBuyStrike" name="buyStrike">
+                                <option> 3.7 </option>
+                                <option> 3.8 </option>
+                            </select>
+                            <select class="form-control col-3" name="buyType">
+                                <option> CALL </option>
+                                <option> PUT </option>
+                            </select>
+                        </div>
+
+                        <div class="form-group row">
+                            <div class="col-3"> SELL LEG </div>
+                            <select class="form-control col-3" id="sltSellStrike" name="sellStrike">
+                                <option> 3.7 </option>
+                                <option> 3.8 </option>
+                            </select>
+                            <select class="form-control col-3" name="sellType">
+                                <option> CALL </option>
+                                <option> PUT </option>
+                            </select>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button class="btn btn-success" type="button" onclick="submitForm()"> APPLY </button>
+                            <button class="btn btn-default" type="button" data-dismiss="modal"> CANCEL </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+
+<script type="text/javascript">
+    function submitForm() {
+        $("#formSkewInfo").submit();
+        $("#mdlSkewInfo").modal("hide");
+    }
+
+    function changeUnderlying() {
+        $("#sltLastTradingDay").empty();
+        $("#sltBuyStrike").empty();
+        $("#sltSellStrike").empty();
+        $.get("/data/option_info/get_last_trading_day/" + $("#sltUnderlying").val(), function (data) {
+            let slt = "";
+            for (let j = 0; j <= data.arrLastTradingDay.length; j++) {
+                slt += "<option>" + data.arrLastTradingDay[j] + "</option>";
+            }
+            $("#sltLastTradingDay").append(slt);
+
+            slt = "";
+            for (let j = 0; j <= data.arrStrike.length; j++) {
+                slt += "<option>" + data.arrStrike[j] + "</option>";
+            }
+            $("#sltBuyStrike").append(slt);
+            $("#sltSellStrike").append(slt);
+        })
+    }
+
+    function changeLastTrdingDay() {
+        $("#sltBuyStrike").empty();
+        $("#sltSellStrike").empty();
+        $.get("/data/option_info/get_strike/" + $("#sltUnderlying").val() + "/" + $("#sltLastTradingDay").val(), function (data) {
+            let slt = "";
+            for (let j = 0; j <= data.length; j++) {
+                slt += "<option>" + data[j] + "</option>";
+            }
+            $("#sltBuyStrike").append(slt);
+            $("#sltSellStrike").append(slt);
+        })
+    }
+</script>
+
+<script type="text/javascript">  // 处理键盘事件
+    $(document).keydown(function(event) {
+
+        if (event.ctrlKey && event.keyCode === 13) {  // Ctrl + Enter
+            $("#mdlSkewInfo").modal("show");
+        }
+
+        if (event.which === 40){ // Down
+            $.getJSON("data/ts/skew", {"offset": chart.getOffset(), "buySymbol": buySymbol, "sellSymbol": sellSymbol}, function(data) {
+               chart.append(data.index, data.data);
+            })
+        }
+
+        else if (event.which === 38){ //up
+            chart.pop();
+        }
+    })
+</script>
+</html>
